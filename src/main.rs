@@ -5,7 +5,6 @@ use std::collections::BTreeMap;
 use std::fs;
 
 fn main() {
-    println!("Hello, world!");
     let backup_dir = "/home/nmccarty/tmp/config/";
 
     // Get list of dblocks
