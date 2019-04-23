@@ -80,6 +80,15 @@ version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "kernel32-sys"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "winapi 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "winapi-build 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "libc"
 version = "0.2.51"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -135,6 +144,23 @@ version = "0.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
+name = "numtoa"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "pbr"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "kernel32-sys 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libc 0.2.51 (registry+https://github.com/rust-lang/crates.io-index)",
+ "termion 1.5.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "time 0.1.42 (registry+https://github.com/rust-lang/crates.io-index)",
+ "winapi 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "pkg-config"
 version = "0.3.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -148,6 +174,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "redox_syscall"
 version = "0.1.54"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "redox_termios"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "redox_syscall 0.1.54 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "rusqlite"
@@ -169,8 +203,20 @@ version = "0.1.0"
 dependencies = [
  "base64 0.10.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "chrono 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "pbr 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rusqlite 0.17.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "zip 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "termion"
+version = "1.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "libc 0.2.51 (registry+https://github.com/rust-lang/crates.io-index)",
+ "numtoa 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "redox_syscall 0.1.54 (registry+https://github.com/rust-lang/crates.io-index)",
+ "redox_termios 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -190,12 +236,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "winapi"
+version = "0.2.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
+name = "winapi"
 version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "winapi-i686-pc-windows-gnu 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "winapi-x86_64-pc-windows-gnu 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
+
+[[package]]
+name = "winapi-build"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "winapi-i686-pc-windows-gnu"
@@ -232,6 +288,7 @@ dependencies = [
 "checksum crc32fast 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ba125de2af0df55319f41944744ad91c71113bf74a4646efff39afe1f6842db1"
 "checksum fallible-iterator 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)" = "eb7217124812dc5672b7476d0c2d20cfe9f7c0f1ba0904b674a9762a0212f72e"
 "checksum fallible-streaming-iterator 0.1.9 (registry+https://github.com/rust-lang/crates.io-index)" = "7360491ce676a36bf9bb3c56c1aa791658183a54d2744120f27285738d90465a"
+"checksum kernel32-sys 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)" = "7507624b29483431c0ba2d82aece8ca6cdba9382bff4ddd0f7490560c056098d"
 "checksum libc 0.2.51 (registry+https://github.com/rust-lang/crates.io-index)" = "bedcc7a809076656486ffe045abeeac163da1b558e963a31e29fbfbeba916917"
 "checksum libflate 0.1.22 (registry+https://github.com/rust-lang/crates.io-index)" = "c52384aeb22d0ce82a10d8ddf35f7fb4717d1b23eac5b94cd38d2050fb53766a"
 "checksum libsqlite3-sys 0.13.0 (registry+https://github.com/rust-lang/crates.io-index)" = "44c0ae64aa0fc0c81fc1ddc9eae833e617e900677f83a72907b5535f08913d99"
@@ -240,13 +297,19 @@ dependencies = [
 "checksum memchr 2.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "2efc7bc57c883d4a4d6e3246905283d8dae951bb3bd32f49d6ef297f546e1c39"
 "checksum num-integer 0.1.39 (registry+https://github.com/rust-lang/crates.io-index)" = "e83d528d2677f0518c570baf2b7abdcf0cd2d248860b68507bdcb3e91d4c0cea"
 "checksum num-traits 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)" = "0b3a5d7cc97d6d30d8b9bc8fa19bf45349ffe46241e8816f50f62f6d6aaabee1"
+"checksum numtoa 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "b8f8bdf33df195859076e54ab11ee78a1b208382d3a26ec40d142ffc1ecc49ef"
+"checksum pbr 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)" = "deb73390ab68d81992bd994d145f697451bb0b54fd39738e72eef32458ad6907"
 "checksum pkg-config 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)" = "676e8eb2b1b4c9043511a9b7bea0915320d7e502b0a079fb03f9635a5252b18c"
 "checksum podio 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)" = "780fb4b6698bbf9cf2444ea5d22411cef2953f0824b98f33cf454ec5615645bd"
 "checksum redox_syscall 0.1.54 (registry+https://github.com/rust-lang/crates.io-index)" = "12229c14a0f65c4f1cb046a3b52047cdd9da1f4b30f8a39c5063c8bae515e252"
+"checksum redox_termios 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "7e891cfe48e9100a70a3b6eb652fef28920c117d366339687bd5576160db0f76"
 "checksum rusqlite 0.17.0 (registry+https://github.com/rust-lang/crates.io-index)" = "f8ef7411f02f83d4ce1b9c6c043013ed141f01aa1a77c665fb6d72042a3705cf"
+"checksum termion 1.5.2 (registry+https://github.com/rust-lang/crates.io-index)" = "dde0593aeb8d47accea5392b39350015b5eccb12c0d98044d856983d89548dea"
 "checksum time 0.1.42 (registry+https://github.com/rust-lang/crates.io-index)" = "db8dcfca086c1143c9270ac42a2bbd8a7ee477b78ac8e45b19abfb0cbede4b6f"
 "checksum vcpkg 0.2.6 (registry+https://github.com/rust-lang/crates.io-index)" = "def296d3eb3b12371b2c7d0e83bfe1403e4db2d7a0bba324a12b21c4ee13143d"
+"checksum winapi 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)" = "167dc9d6949a9b857f3451275e911c3f44255842c1f7a76f33c55103a909087a"
 "checksum winapi 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)" = "f10e386af2b13e47c89e7236a7a14a086791a2b88ebad6df9bf42040195cf770"
+"checksum winapi-build 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "2d315eee3b34aca4797b2da6b13ed88266e6d612562a0c46390af8299fc699bc"
 "checksum winapi-i686-pc-windows-gnu 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "ac3b87c63620426dd9b991e5ce0329eff545bccbbb34f3be09ff6fb6ab51b7b6"
 "checksum winapi-x86_64-pc-windows-gnu 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 "checksum zip 0.5.2 (registry+https://github.com/rust-lang/crates.io-index)" = "c18fc320faf909036e46ac785ea827f72e485304877faf1a3a39538d3714dbc3"

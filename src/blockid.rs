@@ -1,3 +1,5 @@
+use base64::*;
+
 pub struct BlockToFile {
     pub(self) id: i32,
     pub(self) block_id: String,
@@ -12,4 +14,8 @@ impl BlockToFile {
             file_num,
         }
     }
+}
+
+pub fn base64_url_to_plain(url: &str) -> String {
+    base64::encode(&base64::decode_config(url, base64::URL_SAFE).unwrap())
 }

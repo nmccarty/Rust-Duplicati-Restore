@@ -4,8 +4,12 @@ mod database;
 use std::collections::BTreeMap;
 use std::fs;
 
+use database::*;
+
 fn main() {
     let backup_dir = "/home/nmccarty/tmp/config/";
+    let db_location = "/home/nmccarty/tmp/config/index.db";
+    let restore_dir = "/home/nmccarty/tmp/restore";
 
     // Get list of dblocks
     let zip_file_names = fs::read_dir(backup_dir)
@@ -20,4 +24,9 @@ fn main() {
     }
 
     println!("Found {} dblocks", number_to_name.len());
+
+    // Open dblock db connection and build db
+    println!();
+    println!("Indexing dblocks");
+    let dblock_db = DB::new(db_location).create_block_id_to_filenames(&number_to_name);
 }
