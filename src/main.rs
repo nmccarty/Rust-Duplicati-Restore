@@ -3,8 +3,12 @@ mod database;
 
 use std::collections::BTreeMap;
 use std::fs;
+use std::fs::File;
+use std::io::Read;
 
+use blockid::*;
 use database::*;
+use zip::*;
 
 fn main() {
     let backup_dir = "/home/nmccarty/tmp/config/";
@@ -35,7 +39,7 @@ fn main() {
         .unwrap()
         .filter_map(Result::ok)
         .filter(|f| f.path().to_str().unwrap().ends_with("dlist.zip"))
-        .map(|f| f.path().file_name().unwrap().to_str().unwrap().to_string())
+        .map(|f| f.path().to_str().unwrap().to_string())
         .collect();
 
     dlist_file_names.sort();
@@ -43,4 +47,15 @@ fn main() {
     let dlist = dlist_file_names[dlist_file_names.len() - 1].clone();
 
     println!("{} appears to be newest dlist, using it.", dlist);
+    println!("Parsing dlist");
+
+    // Open dlist file
+    let mut dlist_zip = zip::ZipArchive::new(File::open(dlist).unwrap()).unwrap();
+    let mut dlist_file = dlist_zip.by_name("filelist.json").unwrap();
+    let mut dlist_contents = String::new();
+    dlist_file.read_to_string(&mut dlist_contents).unwrap();
+    let file_entries = parse_dlist(&dlist_contents);
+
+    let file_count = file_entries.iter().filter(|f| f.is_file()).count();
+    println!("{} files to be restored", file_count);
 }
