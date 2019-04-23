@@ -44,7 +44,6 @@ impl DB {
             .unwrap();
 
         // Iterate through dblocks, adding them to the db
-        println!("Indexing dblocks");
         let mut pb = ProgressBar::new(number_to_name.len() as u64);
         for (num, path) in number_to_name.iter() {
             let tx = conn.transaction().unwrap();

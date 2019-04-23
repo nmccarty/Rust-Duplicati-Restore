@@ -29,4 +29,18 @@ fn main() {
     println!();
     println!("Indexing dblocks");
     let dblock_db = DB::new(db_location).create_block_id_to_filenames(&number_to_name);
+
+    // Find newest dlist
+    let mut dlist_file_names: Vec<String> = fs::read_dir(backup_dir)
+        .unwrap()
+        .filter_map(Result::ok)
+        .filter(|f| f.path().to_str().unwrap().ends_with("dlist.zip"))
+        .map(|f| f.path().file_name().unwrap().to_str().unwrap().to_string())
+        .collect();
+
+    dlist_file_names.sort();
+
+    let dlist = dlist_file_names[dlist_file_names.len() - 1].clone();
+
+    println!("{} appears to be newest dlist, using it.", dlist);
 }
