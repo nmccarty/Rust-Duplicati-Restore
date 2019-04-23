@@ -1,0 +1,11 @@
+[package]
+name = "rust-duplicati-restore"
+version = "0.1.0"
+authors = ["Nathan McCarty <nathan@mccarty.io>"]
+edition = "2018"
+
+[dependencies]
+rusqlite = "0.17.0"
+zip = "0.5.2"
+chrono = "0.4.0"
+base64 = "0.10.1"
