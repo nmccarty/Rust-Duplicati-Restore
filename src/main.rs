@@ -92,13 +92,12 @@ fn main() {
     println!();
 
     // Get list of dblocks
-    let zip_file_names : Vec<String> = fs::read_dir(backup_dir)
+    let zip_file_names: Vec<String> = fs::read_dir(backup_dir)
         .unwrap()
         .filter_map(Result::ok)
         .map(|f| f.path().to_str().unwrap().to_string())
         .filter(|f| f.ends_with("dblock.zip"))
         .collect();
-
 
     println!("Found {} dblocks", zip_file_names.len());
 
@@ -108,11 +107,10 @@ fn main() {
     let dblock_db =
         DB::new(db_location, &manifest_contents).create_block_id_to_filenames(&zip_file_names);
 
-
     println!("Restoring directory structure");
     let mut pb = ProgressBar::new(folder_count as u64);
     for d in file_entries.iter().filter(|f| f.is_folder()) {
-        d.restore_file(&dblock_db,  &restore_dir);
+        d.restore_file(&dblock_db, &restore_dir);
         pb.inc();
     }
     println!();

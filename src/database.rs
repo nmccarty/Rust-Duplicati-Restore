@@ -1,13 +1,13 @@
 use base64;
-use pbr::ProgressBar;
+use indicatif::{ProgressBar, ProgressStyle};
 use rayon::prelude::*;
 use serde::Deserialize;
 use serde_json;
 use std::fs::File;
+use std::io::BufReader;
 use std::io::Read;
 use std::path::Path;
-use std::sync::{Arc, Mutex};
-use unqlite::{UnQLite, KV};
+use unqlite::{Transaction, UnQLite, KV};
 use zip;
 
 #[derive(Deserialize)]
@@ -43,26 +43,40 @@ impl DB {
 
     pub fn create_block_id_to_filenames(self, paths: &[String]) -> Self {
         // Iterate through dblocks, adding them to the db
-        let pb = Arc::new(Mutex::new(ProgressBar::new(paths.len() as u64)));
-        paths.par_iter().for_each(|path| {
-            // Open zip file
-            let file = File::open(&Path::new(path)).unwrap();
-            let mut zip = zip::ZipArchive::new(file).unwrap();
-            // Iterate through contents and collect items to add to database
-            let mut cache: Vec<(Vec<u8>, String)> = Vec::new();
-            for i in 0..zip.len() {
-                let inner_file = zip.by_index(i).unwrap();
-                let hash = base64::decode_config(inner_file.name(), base64::URL_SAFE).unwrap();
-                cache.push((hash, path.clone()));
-            }
-            // Load items from cache into databse
-
-            let conn = &self.conn;
-            for (hash, path) in cache.iter() {
-                conn.kv_store(hash, path.as_bytes()).unwrap();
-            }
-            pb.lock().unwrap().inc();
-        });
+        let pb = ProgressBar::new(paths.len() as u64);
+        pb.set_style(
+            ProgressStyle::default_bar()
+                .template(
+                    "[{elapsed_precise}] {wide_bar:40.cyan/blue} {pos:>7}/{len:7} {msg} [{eta_precise}]",
+                )
+                .progress_chars("##-"),
+        );
+        let conn = &self.conn;
+        paths
+            .par_iter()
+            .map(|path| {
+                // In this stage, open the file
+                let file = File::open(&Path::new(path)).unwrap();
+                let buf = BufReader::new(file);
+                let zip = zip::ZipArchive::new(buf).unwrap();
+                (zip, path)
+            })
+            .map(|(mut zip, path)| {
+                // Convert to a list of paths
+                let paths: Vec<String> = (0..zip.len())
+                    .map(|i| zip.by_index(i).unwrap().name().to_string())
+                    .collect();
+                (paths, path)
+            })
+            .for_each(|(paths, path)| {
+                let bytes = path.as_bytes();
+                for p in paths {
+                    let hash = base64::decode_config(&p, base64::URL_SAFE).unwrap();
+                    conn.kv_store(hash, bytes).unwrap();
+                }
+                conn.commit().unwrap();
+                pb.inc(1);
+            });
 
         self
     }
