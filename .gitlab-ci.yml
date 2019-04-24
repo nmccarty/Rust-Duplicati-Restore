@@ -1,0 +1,20 @@
+image: "rust:latest"
+
+before_script:
+  - apt-get update -yqq
+  - apt-get install -yqq --no-install-recommends build-essential
+  - apt-get install -yqq libsqlite3-dev
+
+cache:
+  paths:
+    - target
+
+stages:
+  - build
+
+build_job:
+  stage: build
+  script:
+    - cargo build --release
+  artifacts:
+    - target/release/rust-duplicati-restore
