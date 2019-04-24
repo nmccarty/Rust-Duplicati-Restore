@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 mod blockid;
 mod database;
 
@@ -50,9 +49,9 @@ fn main() {
     println!();
 
     // Set CPU count
-    let pool = rayon::ThreadPoolBuilder::new()
+    rayon::ThreadPoolBuilder::new()
         .num_threads(cpu_count)
-        .build()
+        .build_global()
         .unwrap();
 
     // Find newest dlist

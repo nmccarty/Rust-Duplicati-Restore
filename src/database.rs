@@ -1,19 +1,18 @@
 use crate::blockid::*;
 use pbr::ProgressBar;
 use rayon::prelude::*;
-use rusqlite::types::FromSql;
 use rusqlite::*;
 use serde::Deserialize;
-use serde_json::{Result, Value};
+use serde_json;
 use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::Read;
-use std::io::Write;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
 use zip;
 
 #[derive(Deserialize)]
+#[allow(dead_code)] // Will use all these fields in the future
 struct Manifest {
     #[serde(rename = "Version")]
     pub(self) version: i64,
@@ -59,10 +58,7 @@ impl DB {
         DB { conn, manifest }
     }
 
-    pub fn create_block_id_to_filenames(
-        mut self,
-        number_to_name: &BTreeMap<usize, String>,
-    ) -> Self {
+    pub fn create_block_id_to_filenames(self, number_to_name: &BTreeMap<usize, String>) -> Self {
         // Iterate through dblocks, adding them to the db
         let pb = Arc::new(Mutex::new(ProgressBar::new(number_to_name.len() as u64)));
         number_to_name.par_iter().for_each(|(num, path)| {

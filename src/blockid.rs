@@ -1,6 +1,5 @@
 use crate::database::DB;
 use base64;
-use rayon::prelude::*;
 use serde::Deserialize;
 use serde_json;
 use std::collections::BTreeMap;
@@ -10,22 +9,6 @@ use std::io::prelude::*;
 use std::io::SeekFrom;
 use std::io::Write;
 use std::path::Path;
-
-pub struct BlockToFile {
-    pub(self) id: i32,
-    pub(self) block_id: String,
-    pub(self) file_num: i64,
-}
-
-impl BlockToFile {
-    pub fn new(id: i32, block_id: String, file_num: i64) -> BlockToFile {
-        BlockToFile {
-            id,
-            block_id,
-            file_num,
-        }
-    }
-}
 
 pub fn base64_url_to_plain(url: &str) -> String {
     base64::encode(&base64::decode_config(url, base64::URL_SAFE).unwrap())
@@ -116,7 +99,11 @@ impl FileEntry {
             FileType::Folder { .. } => {
                 fs::create_dir_all(path).unwrap();
             }
-            FileType::File { hash, size, time } => {
+            FileType::File {
+                hash,
+                size,
+                time: _,
+            } => {
                 // Small files only have one block
                 if self.block_lists.len() == 0 {
                     let mut file = File::create(path.clone()).unwrap();
