@@ -17,4 +17,5 @@ build_job:
   script:
     - cargo build --release
   artifacts:
-    - target/release/rust-duplicati-restore
+    paths:
+      - target/release/rust-duplicati-restore
