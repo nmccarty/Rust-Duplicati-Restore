@@ -16,6 +16,7 @@ build_job:
   stage: build
   script:
     - cargo build --release
+    - mv target/release/rust-duplicati-restore .
   artifacts:
     paths:
-      - target/release/rust-duplicati-restore
+      - rust-duplicati-restore
