@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 mod blockid;
 mod database;
 
@@ -9,6 +10,10 @@ use std::io::Read;
 use blockid::*;
 use database::*;
 use zip::*;
+
+use std::sync::Mutex;
+
+use pbr::ProgressBar;
 
 fn main() {
     let backup_dir = "/home/nmccarty/tmp/config/";
@@ -58,4 +63,22 @@ fn main() {
 
     let file_count = file_entries.iter().filter(|f| f.is_file()).count();
     println!("{} files to be restored", file_count);
+    let folder_count = file_entries.iter().filter(|f| f.is_folder()).count();
+    println!("{} folders to be restored", folder_count);
+    println!();
+
+    println!("Restoring directory structure");
+    let mut pb = ProgressBar::new(folder_count as u64);
+    for d in file_entries.iter().filter(|f| f.is_folder()) {
+        d.restore_file(&dblock_db, &number_to_name, restore_dir);
+        pb.inc();
+    }
+    println!();
+
+    println!("Restoring files");
+    let mut pb = ProgressBar::new(file_count as u64);
+    for f in file_entries.iter().filter(|f| f.is_file()) {
+        f.restore_file(&dblock_db, &number_to_name, restore_dir);
+        pb.inc();
+    }
 }

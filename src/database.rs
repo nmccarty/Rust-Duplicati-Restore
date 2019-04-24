@@ -1,11 +1,13 @@
 use crate::blockid::*;
 use pbr::ProgressBar;
-use rusqlite::types::ToSql;
+use rusqlite::types::FromSql;
 use rusqlite::*;
 use std::collections::BTreeMap;
 use std::fs::File;
+use std::io::Read;
+use std::io::Write;
 use std::path::Path;
-use zip::*;
+use zip;
 
 pub struct DB {
     conn: Connection,
@@ -66,5 +68,52 @@ impl DB {
         }
 
         self
+    }
+
+    pub fn get_filename_from_block_id(
+        &self,
+        block_id: &str,
+        number_to_name: &BTreeMap<usize, String>,
+    ) -> Option<String> {
+        let conn = &self.conn;
+        //        println!("{}", block_id);
+        //        let converted_block_id = base64_url_to_plain(block_id);
+        let mut stmt = conn
+            .prepare("select FileNum from BlockidToFile Where BlockId = ?")
+            .unwrap();
+        let mut rows = stmt.query(&[&block_id]).unwrap();
+        let row = rows.next();
+        if let Ok(row) = row {
+            if let Some(row) = row {
+                let blocknum: i64 = row.get(0).unwrap();
+                Some(
+                    number_to_name
+                        .get(&(blocknum as usize))
+                        .unwrap()
+                        .to_string(),
+                )
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+
+    pub fn get_content_block(
+        &self,
+        block_id: &str,
+        number_to_name: &BTreeMap<usize, String>,
+    ) -> Option<Vec<u8>> {
+        let mut output = Vec::new();
+        if let Some(filename) = self.get_filename_from_block_id(block_id, number_to_name) {
+            let mut zip = zip::ZipArchive::new(File::open(filename).unwrap()).unwrap();
+            let mut block = zip.by_name(&base64_plain_to_url(block_id)).unwrap();
+            block.read_to_end(&mut output).unwrap();
+
+            Some(output)
+        } else {
+            None
+        }
     }
 }
