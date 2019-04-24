@@ -129,7 +129,6 @@ impl FileEntry {
                     }
                 } else {
                     let mut file = File::create(path.clone()).unwrap();
-                    println!("Building {} from chunks", path.to_str().unwrap());
                     // Each blockid points to a list of blockids
                     for (blhi, blh) in self.block_lists.iter().enumerate() {
                         let blockhashoffset = blhi * db.offset_size();
