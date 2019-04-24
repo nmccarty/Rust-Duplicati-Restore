@@ -31,7 +31,7 @@ fn main() {
     println!();
     let restore_dir = restore_dir.trim();
 
-    let db_location = Path::join(Path::new(&backup_dir.clone()), Path::new("index.db"));
+    let db_location = Path::join(Path::new(backup_dir), Path::new("index.db"));
     let db_location = db_location.to_str().unwrap();
 
     println!(

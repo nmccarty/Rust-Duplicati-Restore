@@ -99,21 +99,15 @@ impl FileEntry {
             FileType::Folder { .. } => {
                 fs::create_dir_all(path).unwrap();
             }
-            FileType::File {
-                hash,
-                size,
-                time: _,
-            } => {
+            FileType::File { hash, size, .. } => {
                 // Small files only have one block
-                if self.block_lists.len() == 0 {
+                if self.block_lists.is_empty() {
                     let mut file = File::create(path.clone()).unwrap();
                     let block = db.get_content_block(hash, number_to_name);
                     if let Some(block) = block {
-                        file.write(block.as_ref()).unwrap();
-                    } else {
-                        if *size > 0 {
-                            println!("Missing block {} for {}", hash, path.to_str().unwrap());
-                        }
+                        file.write_all(block.as_ref()).unwrap();
+                    } else if *size > 0 {
+                        println!("Missing block {} for {}", hash, path.to_str().unwrap());
                     }
                 } else {
                     let mut file = File::create(path.clone()).unwrap();
@@ -130,7 +124,7 @@ impl FileEntry {
                                         (blockhashoffset + bi * db.block_size()) as u64,
                                     ))
                                     .unwrap();
-                                    file.write(&block).unwrap();
+                                    file.write_all(&block).unwrap();
                                 } else {
                                     println!(
                                         "Failed to find block {} for {}",
