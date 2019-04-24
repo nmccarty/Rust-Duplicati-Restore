@@ -2,22 +2,21 @@
 mod blockid;
 mod database;
 
+use blockid::*;
+use database::*;
+use rayon::prelude::*;
 use std::collections::BTreeMap;
 use std::fs;
 use std::fs::File;
 use std::io::Read;
-
-use blockid::*;
-use database::*;
-use zip::*;
-
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
+use zip;
 
 use pbr::ProgressBar;
 
 fn main() {
-    let backup_dir = "/home/nmccarty/tmp/config/";
-    let db_location = "/home/nmccarty/tmp/config/index.db";
+    let backup_dir = "/home/nmccarty/tmp/config";
+    let db_location = "/home/nmccarty/tmp/index.db";
     let restore_dir = "/home/nmccarty/tmp/restore";
 
     // Find newest dlist
@@ -87,9 +86,12 @@ fn main() {
     println!();
 
     println!("Restoring files");
-    let mut pb = ProgressBar::new(file_count as u64);
-    for f in file_entries.iter().filter(|f| f.is_file()) {
-        f.restore_file(&dblock_db, &number_to_name, restore_dir);
-        pb.inc();
-    }
+    let pb = Arc::new(Mutex::new(ProgressBar::new(file_count as u64)));
+    file_entries
+        .par_iter()
+        .filter(|f| f.is_file())
+        .for_each(|f| {
+            f.restore_file(&dblock_db, &number_to_name, restore_dir);
+            pb.lock().unwrap().inc();
+        });
 }

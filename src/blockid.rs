@@ -1,7 +1,8 @@
 use crate::database::DB;
 use base64;
+use rayon::prelude::*;
 use serde::Deserialize;
-use serde_json::{Result, Value};
+use serde_json;
 use std::collections::BTreeMap;
 use std::fs;
 use std::fs::File;

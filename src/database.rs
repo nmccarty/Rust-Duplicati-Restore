@@ -1,5 +1,6 @@
 use crate::blockid::*;
 use pbr::ProgressBar;
+use rayon::prelude::*;
 use rusqlite::types::FromSql;
 use rusqlite::*;
 use serde::Deserialize;
@@ -9,6 +10,7 @@ use std::fs::File;
 use std::io::Read;
 use std::io::Write;
 use std::path::Path;
+use std::sync::{Arc, Mutex};
 use zip;
 
 #[derive(Deserialize)]
@@ -30,7 +32,7 @@ struct Manifest {
 }
 
 pub struct DB {
-    conn: Connection,
+    conn: Arc<Mutex<Connection>>,
     manifest: Manifest,
 }
 
@@ -41,16 +43,7 @@ impl DB {
             .unwrap();
         conn.execute("PRAGMA page_size = 16384", NO_PARAMS).unwrap();
         conn.execute("PRAGMA cache_size = 2048", NO_PARAMS).unwrap();
-        let manifest: Manifest = serde_json::from_str(manifest).unwrap();
-        DB { conn, manifest }
-    }
-
-    pub fn create_block_id_to_filenames(
-        mut self,
-        number_to_name: &BTreeMap<usize, String>,
-    ) -> Self {
-        let conn = &mut self.conn;
-
+        conn.execute("PRAGMA synchronous = OFF", NO_PARAMS).unwrap();
         // Create Block ID -> File Number table and empty it out if it exists
         conn.execute(
             "create table if not exists BlockIdToFile (
@@ -59,35 +52,56 @@ impl DB {
             NO_PARAMS,
         )
         .unwrap();
-        conn.execute(
-            "create index if not exists IxBlockId on BlockIdToFile(BlockId)",
-            NO_PARAMS,
-        )
-        .unwrap();
         conn.execute("delete from BlockIdToFile where 1", NO_PARAMS)
             .unwrap();
+        let manifest: Manifest = serde_json::from_str(manifest).unwrap();
+        let conn = Arc::new(Mutex::new(conn));
+        DB { conn, manifest }
+    }
 
+    pub fn create_block_id_to_filenames(
+        mut self,
+        number_to_name: &BTreeMap<usize, String>,
+    ) -> Self {
         // Iterate through dblocks, adding them to the db
-        let mut pb = ProgressBar::new(number_to_name.len() as u64);
-        for (num, path) in number_to_name.iter() {
-            let tx = conn.transaction().unwrap();
+        let pb = Arc::new(Mutex::new(ProgressBar::new(number_to_name.len() as u64)));
+        number_to_name.par_iter().for_each(|(num, path)| {
             // Open zip file
             let file = File::open(&Path::new(path)).unwrap();
             let mut zip = zip::ZipArchive::new(file).unwrap();
-            // Iterate through contents and add names to database
+            // Iterate through contents and collect items to add to database
+            let mut cache: Vec<(String, String)> = Vec::new();
             for i in 0..zip.len() {
                 let inner_file = zip.by_index(i).unwrap();
                 let name = base64_url_to_plain(inner_file.name());
-                // Add name to database
-                tx.execute(
-                    "insert into BlockIdToFile (BlockId, FileNum) VALUES (?1, ?2)",
-                    &[&name, &num.to_string()],
-                )
-                .unwrap();
+                cache.push((name.clone(), num.to_string().clone()));
             }
-            pb.inc();
-            tx.commit().unwrap();
-        }
+            // Load items from cache into databse
+            {
+                let mut conn = self.conn.lock().unwrap();
+                let tx = conn.transaction().unwrap();
+                {
+                    let txref = &tx;
+                    let mut stmt = txref
+                        .prepare("insert into BlockIdToFile (BlockId,FileNum) values (?1,?2)")
+                        .unwrap();
+                    for (name, num) in cache.iter() {
+                        stmt.execute(&[name, num]).unwrap();
+                    }
+                }
+                tx.commit().unwrap();
+                pb.lock().unwrap().inc();
+            }
+        });
+        // Index now that we have everything
+        self.conn
+            .lock()
+            .unwrap()
+            .execute(
+                "create index if not exists IxBlockId on BlockIdToFile(BlockId)",
+                NO_PARAMS,
+            )
+            .unwrap();
 
         self
     }
@@ -97,7 +111,7 @@ impl DB {
         block_id: &str,
         number_to_name: &BTreeMap<usize, String>,
     ) -> Option<String> {
-        let conn = &self.conn;
+        let conn = self.conn.lock().unwrap();
         //        println!("{}", block_id);
         //        let converted_block_id = base64_url_to_plain(block_id);
         let mut stmt = conn
