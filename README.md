@@ -22,7 +22,11 @@ cargo build --release
 
 Or download the latest binary from the artifacts
 
-## Running the tests
+## Limitations
+
+* Currently does not verify restored files
+* Does not yet support encrypted backups, I reccomend combining aescrypt with gnu parallel for decryption
+* Does not support remote repositories yet, I reccomend using rclone to pull donw a local copy
 
 
 ## Built With
