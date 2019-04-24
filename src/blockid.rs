@@ -5,6 +5,8 @@ use serde_json::{Result, Value};
 use std::collections::BTreeMap;
 use std::fs;
 use std::fs::File;
+use std::io::prelude::*;
+use std::io::SeekFrom;
 use std::io::Write;
 use std::path::Path;
 
@@ -126,7 +128,38 @@ impl FileEntry {
                         }
                     }
                 } else {
-
+                    let mut file = File::create(path.clone()).unwrap();
+                    println!("Building {} from chunks", path.to_str().unwrap());
+                    // Each blockid points to a list of blockids
+                    for (blhi, blh) in self.block_lists.iter().enumerate() {
+                        let blockhashoffset = blhi * db.offset_size();
+                        let binary_hashes = db.get_content_block(blh, number_to_name);
+                        if let Some(binary_hashes) = binary_hashes {
+                            for (bi, hash) in binary_hashes.chunks(db.hash_size()).enumerate() {
+                                let hash = base64::encode(hash);
+                                let block = db.get_content_block(&hash, number_to_name);
+                                if let Some(block) = block {
+                                    file.seek(SeekFrom::Start(
+                                        (blockhashoffset + bi * db.block_size()) as u64,
+                                    ))
+                                    .unwrap();
+                                    file.write(&block).unwrap();
+                                } else {
+                                    println!(
+                                        "Failed to find block {} for {}",
+                                        hash,
+                                        path.to_str().unwrap()
+                                    );
+                                }
+                            }
+                        } else {
+                            println!(
+                                "Failed to find blocklist {} for {}",
+                                blh,
+                                path.to_str().unwrap()
+                            );
+                        }
+                    }
                 }
             }
             _ => (),

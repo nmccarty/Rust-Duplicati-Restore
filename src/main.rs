@@ -20,6 +20,44 @@ fn main() {
     let db_location = "/home/nmccarty/tmp/config/index.db";
     let restore_dir = "/home/nmccarty/tmp/restore";
 
+    // Find newest dlist
+    let mut dlist_file_names: Vec<String> = fs::read_dir(backup_dir)
+        .unwrap()
+        .filter_map(Result::ok)
+        .filter(|f| f.path().to_str().unwrap().ends_with("dlist.zip"))
+        .map(|f| f.path().to_str().unwrap().to_string())
+        .collect();
+
+    dlist_file_names.sort();
+
+    let dlist = dlist_file_names[dlist_file_names.len() - 1].clone();
+
+    println!("{} appears to be newest dlist, using it.", dlist);
+    println!("Parsing dlist");
+
+    // Open dlist file
+    let mut dlist_zip = zip::ZipArchive::new(File::open(dlist.clone()).unwrap()).unwrap();
+    let mut dlist_file = dlist_zip.by_name("filelist.json").unwrap();
+    let mut dlist_contents = String::new();
+    dlist_file.read_to_string(&mut dlist_contents).unwrap();
+    let file_entries = parse_dlist(&dlist_contents);
+
+    // Open Manifest
+    let mut manifest_zip = zip::ZipArchive::new(File::open(dlist.clone()).unwrap()).unwrap();
+    let mut manifest_file = manifest_zip.by_name("manifest").unwrap();
+    let mut manifest_contents = String::new();
+    manifest_file
+        .read_to_string(&mut manifest_contents)
+        .unwrap();
+    let manifest_contents = manifest_contents.replace("\u{feff}", "");
+    let manifest_contents = manifest_contents.trim();
+
+    let file_count = file_entries.iter().filter(|f| f.is_file()).count();
+    println!("{} files to be restored", file_count);
+    let folder_count = file_entries.iter().filter(|f| f.is_folder()).count();
+    println!("{} folders to be restored", folder_count);
+    println!();
+
     // Get list of dblocks
     let zip_file_names = fs::read_dir(backup_dir)
         .unwrap()
@@ -37,35 +75,8 @@ fn main() {
     // Open dblock db connection and build db
     println!();
     println!("Indexing dblocks");
-    let dblock_db = DB::new(db_location).create_block_id_to_filenames(&number_to_name);
-
-    // Find newest dlist
-    let mut dlist_file_names: Vec<String> = fs::read_dir(backup_dir)
-        .unwrap()
-        .filter_map(Result::ok)
-        .filter(|f| f.path().to_str().unwrap().ends_with("dlist.zip"))
-        .map(|f| f.path().to_str().unwrap().to_string())
-        .collect();
-
-    dlist_file_names.sort();
-
-    let dlist = dlist_file_names[dlist_file_names.len() - 1].clone();
-
-    println!("{} appears to be newest dlist, using it.", dlist);
-    println!("Parsing dlist");
-
-    // Open dlist file
-    let mut dlist_zip = zip::ZipArchive::new(File::open(dlist).unwrap()).unwrap();
-    let mut dlist_file = dlist_zip.by_name("filelist.json").unwrap();
-    let mut dlist_contents = String::new();
-    dlist_file.read_to_string(&mut dlist_contents).unwrap();
-    let file_entries = parse_dlist(&dlist_contents);
-
-    let file_count = file_entries.iter().filter(|f| f.is_file()).count();
-    println!("{} files to be restored", file_count);
-    let folder_count = file_entries.iter().filter(|f| f.is_folder()).count();
-    println!("{} folders to be restored", folder_count);
-    println!();
+    let dblock_db =
+        DB::new(db_location, &manifest_contents).create_block_id_to_filenames(&number_to_name);
 
     println!("Restoring directory structure");
     let mut pb = ProgressBar::new(folder_count as u64);
