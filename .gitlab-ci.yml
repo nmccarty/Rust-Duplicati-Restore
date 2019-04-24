@@ -1,4 +1,4 @@
-image: "shepmaster:rust-nightly"
+image: "rustlang/rust"
 
 before_script:
   - apt-get update -yqq
