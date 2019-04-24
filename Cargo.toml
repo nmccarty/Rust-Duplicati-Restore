@@ -1,6 +1,8 @@
 [package]
 name = "rust-duplicati-restore"
-version = "0.1.0"
+description = "A program to restore duplicati backups"
+license = "MIT"
+version = "0.0.2"
 authors = ["Nathan McCarty <nathan@mccarty.io>"]
 edition = "2018"
 
