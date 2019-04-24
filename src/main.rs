@@ -4,23 +4,59 @@ mod database;
 
 use blockid::*;
 use database::*;
+use num_cpus;
+use pbr::ProgressBar;
 use rayon::prelude::*;
 use std::collections::BTreeMap;
 use std::fs;
 use std::fs::File;
-use std::io::Read;
+use std::io::{stdin, Read};
+use std::path::Path;
 use std::sync::{Arc, Mutex};
 use zip;
 
-use pbr::ProgressBar;
-
 fn main() {
-    let backup_dir = "/home/nmccarty/tmp/config";
-    let db_location = "/home/nmccarty/tmp/index.db";
-    let restore_dir = "/home/nmccarty/tmp/restore";
+    println!("Enter the location of the backup:");
+    let mut backup_dir = String::new();
+    stdin()
+        .read_line(&mut backup_dir)
+        .expect("Did not enter a location.");
+    println!();
+    let backup_dir = backup_dir.trim();
+
+    println!("Enter a location to restore to:");
+    let mut restore_dir = String::new();
+    stdin()
+        .read_line(&mut restore_dir)
+        .expect("Did not enter a location.");
+    println!();
+    let restore_dir = restore_dir.trim();
+
+    let db_location = Path::join(Path::new(&backup_dir.clone()), Path::new("index.db"));
+    let db_location = db_location.to_str().unwrap();
+
+    println!(
+        "Enter number of threads to use (Default {}):",
+        num_cpus::get()
+    );
+    let mut cpu_input = String::new();
+    stdin()
+        .read_line(&mut cpu_input)
+        .expect("Did not enter a number");
+    let cpu_count: usize = match cpu_input.trim().parse() {
+        Ok(i) => i,
+        Err(..) => num_cpus::get(),
+    };
+    println!();
+
+    // Set CPU count
+    let pool = rayon::ThreadPoolBuilder::new()
+        .num_threads(cpu_count)
+        .build()
+        .unwrap();
 
     // Find newest dlist
-    let mut dlist_file_names: Vec<String> = fs::read_dir(backup_dir)
+    let mut dlist_file_names: Vec<String> = fs::read_dir(&backup_dir)
         .unwrap()
         .filter_map(Result::ok)
         .filter(|f| f.path().to_str().unwrap().ends_with("dlist.zip"))
@@ -80,7 +116,7 @@ fn main() {
     println!("Restoring directory structure");
     let mut pb = ProgressBar::new(folder_count as u64);
     for d in file_entries.iter().filter(|f| f.is_folder()) {
-        d.restore_file(&dblock_db, &number_to_name, restore_dir);
+        d.restore_file(&dblock_db, &number_to_name, &restore_dir);
         pb.inc();
     }
     println!();
@@ -91,7 +127,7 @@ fn main() {
         .par_iter()
         .filter(|f| f.is_file())
         .for_each(|f| {
-            f.restore_file(&dblock_db, &number_to_name, restore_dir);
+            f.restore_file(&dblock_db, &number_to_name, &restore_dir);
             pb.lock().unwrap().inc();
         });
 }
