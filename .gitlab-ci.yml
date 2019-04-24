@@ -3,7 +3,6 @@ image: "rustlang/rust:nightly"
 before_script:
   - apt-get update -yqq
   - apt-get install -yqq --no-install-recommends build-essential
-  - apt-get install -yqq libsqlite3-dev
   - apt-get install -yqq clang
 
 cache:

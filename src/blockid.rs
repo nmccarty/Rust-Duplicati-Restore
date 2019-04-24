@@ -2,21 +2,12 @@ use crate::database::DB;
 use base64;
 use serde::Deserialize;
 use serde_json;
-use std::collections::BTreeMap;
 use std::fs;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::SeekFrom;
 use std::io::Write;
 use std::path::Path;
-
-pub fn base64_url_to_plain(url: &str) -> String {
-    base64::encode(&base64::decode_config(url, base64::URL_SAFE).unwrap())
-}
-
-pub fn base64_plain_to_url(plain: &str) -> String {
-    base64::encode_config(&base64::decode(plain).unwrap(), base64::URL_SAFE)
-}
 
 #[derive(Debug)]
 pub enum FileType {
@@ -88,8 +79,7 @@ impl FileEntry {
     pub fn restore_file(
         &self,
         db: &DB,
-        number_to_name: &BTreeMap<usize, String>,
-        restore_path: &str,
+        restore_path: &str
     ) {
         let root_path = Path::new(restore_path);
         let file_path = Path::new(&self.path[1..]);
@@ -103,7 +93,7 @@ impl FileEntry {
                 // Small files only have one block
                 if self.block_lists.is_empty() {
                     let mut file = File::create(path.clone()).unwrap();
-                    let block = db.get_content_block(hash, number_to_name);
+                    let block = db.get_content_block(hash);
                     if let Some(block) = block {
                         file.write_all(block.as_ref()).unwrap();
                     } else if *size > 0 {
@@ -114,11 +104,12 @@ impl FileEntry {
                     // Each blockid points to a list of blockids
                     for (blhi, blh) in self.block_lists.iter().enumerate() {
                         let blockhashoffset = blhi * db.offset_size();
-                        let binary_hashes = db.get_content_block(blh, number_to_name);
+                        let binary_hashes = db.get_content_block(blh);
                         if let Some(binary_hashes) = binary_hashes {
                             for (bi, hash) in binary_hashes.chunks(db.hash_size()).enumerate() {
                                 let hash = base64::encode(hash);
-                                let block = db.get_content_block(&hash, number_to_name);
+                                let block = db.get_content_block(&hash);
+                                
                                 if let Some(block) = block {
                                     file.seek(SeekFrom::Start(
                                         (blockhashoffset + bi * db.block_size()) as u64,

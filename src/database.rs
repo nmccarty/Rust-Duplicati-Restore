@@ -1,15 +1,14 @@
-use crate::blockid::*;
 use pbr::ProgressBar;
 use rayon::prelude::*;
-use rusqlite::*;
 use serde::Deserialize;
 use serde_json;
-use std::collections::BTreeMap;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
 use std::sync::{Arc, Mutex};
+use unqlite::{UnQLite, KV};
 use zip;
+use base64;
 
 #[derive(Deserialize)]
 #[allow(dead_code)] // Will use all these fields in the future
@@ -31,73 +30,41 @@ struct Manifest {
 }
 
 pub struct DB {
-    conn: Arc<Mutex<Connection>>,
+    conn: UnQLite,
     manifest: Manifest,
 }
 
 impl DB {
     pub fn new(file: &str, manifest: &str) -> DB {
-        let conn = Connection::open(file).unwrap();
-        conn.execute("PRAGMA temp_store = memory", NO_PARAMS)
-            .unwrap();
-        conn.execute("PRAGMA page_size = 16384", NO_PARAMS).unwrap();
-        conn.execute("PRAGMA cache_size = 2048", NO_PARAMS).unwrap();
-        conn.execute("PRAGMA synchronous = OFF", NO_PARAMS).unwrap();
-        // Create Block ID -> File Number table and empty it out if it exists
-        conn.execute(
-            "create table if not exists BlockIdToFile (
-                     BlockId TEXT,
-                     FileNum INTEGER)",
-            NO_PARAMS,
-        )
-        .unwrap();
-        conn.execute("delete from BlockIdToFile where 1", NO_PARAMS)
-            .unwrap();
+        let conn = UnQLite::create(file);
         let manifest: Manifest = serde_json::from_str(manifest).unwrap();
-        let conn = Arc::new(Mutex::new(conn));
         DB { conn, manifest }
     }
 
-    pub fn create_block_id_to_filenames(self, number_to_name: &BTreeMap<usize, String>) -> Self {
+    pub fn create_block_id_to_filenames(self, paths: &Vec<String>) -> Self {
         // Iterate through dblocks, adding them to the db
-        let pb = Arc::new(Mutex::new(ProgressBar::new(number_to_name.len() as u64)));
-        number_to_name.par_iter().for_each(|(num, path)| {
+        let pb = Arc::new(Mutex::new(ProgressBar::new(paths.len() as u64)));
+        paths.par_iter().for_each(|path| {
             // Open zip file
             let file = File::open(&Path::new(path)).unwrap();
             let mut zip = zip::ZipArchive::new(file).unwrap();
             // Iterate through contents and collect items to add to database
-            let mut cache: Vec<(String, String)> = Vec::new();
+            let mut cache: Vec<(Vec<u8>, String)> = Vec::new();
             for i in 0..zip.len() {
                 let inner_file = zip.by_index(i).unwrap();
-                let name = base64_url_to_plain(inner_file.name());
-                cache.push((name.clone(), num.to_string().clone()));
+                let hash = base64::decode_config(inner_file.name(),base64::URL_SAFE).unwrap();
+                cache.push((hash, path.clone()));
+                
             }
             // Load items from cache into databse
-            {
-                let mut conn = self.conn.lock().unwrap();
-                let tx = conn.transaction().unwrap();
-                {
-                    let txref = &tx;
-                    let mut stmt = txref
-                        .prepare("insert into BlockIdToFile (BlockId,FileNum) values (?1,?2)")
-                        .unwrap();
-                    for (name, num) in cache.iter() {
-                        stmt.execute(&[name, num]).unwrap();
-                    }
-                }
-                tx.commit().unwrap();
-                pb.lock().unwrap().inc();
+
+            let conn = &self.conn;
+            for (hash, path) in cache.iter() {
+                    conn.kv_store(hash, path.as_bytes()).unwrap();
             }
+            pb.lock().unwrap().inc();
+
         });
-        // Index now that we have everything
-        self.conn
-            .lock()
-            .unwrap()
-            .execute(
-                "create index if not exists IxBlockId on BlockIdToFile(BlockId)",
-                NO_PARAMS,
-            )
-            .unwrap();
 
         self
     }
@@ -105,28 +72,13 @@ impl DB {
     pub fn get_filename_from_block_id(
         &self,
         block_id: &str,
-        number_to_name: &BTreeMap<usize, String>,
     ) -> Option<String> {
-        let conn = self.conn.lock().unwrap();
+        let conn = &self.conn;
         //        println!("{}", block_id);
         //        let converted_block_id = base64_url_to_plain(block_id);
-        let mut stmt = conn
-            .prepare("select FileNum from BlockidToFile Where BlockId = ?")
-            .unwrap();
-        let mut rows = stmt.query(&[&block_id]).unwrap();
-        let row = rows.next();
-        if let Ok(row) = row {
-            if let Some(row) = row {
-                let blocknum: i64 = row.get(0).unwrap();
-                Some(
-                    number_to_name
-                        .get(&(blocknum as usize))
-                        .unwrap()
-                        .to_string(),
-                )
-            } else {
-                None
-            }
+        let result = conn.kv_fetch(base64::decode_config(block_id,base64::STANDARD).unwrap());
+        if let Ok(path_bytes) = result {
+            Some(String::from_utf8(path_bytes).unwrap())
         } else {
             None
         }
@@ -135,12 +87,11 @@ impl DB {
     pub fn get_content_block(
         &self,
         block_id: &str,
-        number_to_name: &BTreeMap<usize, String>,
     ) -> Option<Vec<u8>> {
         let mut output = Vec::new();
-        if let Some(filename) = self.get_filename_from_block_id(block_id, number_to_name) {
+        if let Some(filename) = self.get_filename_from_block_id(block_id) {
             let mut zip = zip::ZipArchive::new(File::open(filename).unwrap()).unwrap();
-            let mut block = zip.by_name(&base64_plain_to_url(block_id)).unwrap();
+            let mut block = zip.by_name(&base64::encode_config(&base64::decode(block_id).unwrap(),base64::URL_SAFE)).unwrap();
             block.read_to_end(&mut output).unwrap();
 
             Some(output)
